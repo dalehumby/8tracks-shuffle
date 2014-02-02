@@ -26,7 +26,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import sys
 import os
 import logging
 import requests
@@ -135,8 +134,9 @@ def get_mix_details(mix_id):
     url = 'http://8tracks.com/mixes/%s.json' % mix_id
     r = requests.get(url, headers=headers)
     r = r.json()
-    return r['mix']['name'], r['mix']['tracks_count']
-    
+    mix_name = clean_name(r['mix']['name'])
+    tracks_count = r['mix']['tracks_count']
+    return mix_name, tracks_count
 
 def get_track(play_token, mix, method='play'):
     """
@@ -176,6 +176,7 @@ def download_track(track_set):
         raise EighttracksError('Cannot download track')
     extension = find_extension(r.url)
     file_name = '%s - %s (%s).%s' % (track['name'], track['performer'], track['release_name'], extension)
+    file_name = clean_name(file_name)
     f = open(file_name, 'wb')
     f.write(r.content)
     f.close()
@@ -210,6 +211,31 @@ def report_track_as_played(play_token, mix_id, track_set):
     except Timeout:
         pass
 
+def write_playlist(mix_name, file_name, file_format, play_length):
+    """
+    Make an m3u playslist so when importing to iTunes the tracks are played
+    in same order as on 8tracks.
+    """
+    
+    playlist = '%s.m3u' % mix_name
+    try:
+        f = open(playlist, 'r')
+    except IOError:
+        f = open(playlist, 'w')
+        f.write('#EXTM3U\n')
+        f.close()
+    f = open(playlist, 'a')
+    f.write('#EXTINF:%s,%s\n' % (int(play_length), file_name[:-4]))
+    f.write('%s\n' % (file_name))
+    f.close()
+
+def clean_name(name):
+    """
+    Change Unicode to ASCII and remove unhelpful or illegal characters
+    """
+    name = name.encode('ascii','ignore')
+    return name.translate(None, """\/?'";,""")
+
 def main():
     login()
     play_token = get_play_token()
@@ -233,6 +259,7 @@ def main():
                 track_set = get_track(play_token, mix_id, method='skip')
                 continue
             play_length = get_play_length(file_name, file_format)
+            write_playlist(mix_name, file_name, file_format, play_length)
             logging.info('Playing %s for %ss', file_name, play_length)
             logging.debug('Waiting 30s...')
             sleep(30)
