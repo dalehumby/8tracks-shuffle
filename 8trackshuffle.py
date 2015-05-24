@@ -67,9 +67,9 @@ def get_liked_mixes(user_id, collection='liked'):
     """
     
     if collection == 'liked':
-        url = 'http://8tracks.com/mix_sets/liked:%s.json?include=mixes' % user_id
+        url = 'http://8tracks.com/mix_sets/liked:%s.json?include=mixes&per_page=500' % user_id
     else:
-        url = 'http://8tracks.com/mix_sets/collection:%s:%s.json?include=mixes' % (user_id, collection)
+        url = 'http://8tracks.com/mix_sets/collection:%s:%s.json?include=mixes&per_page=500' % (user_id, collection)
     r = requests.get(url, headers=headers)
     if r.status_code >= 400:
         logging.error('Cannot find collection %s', collection)
